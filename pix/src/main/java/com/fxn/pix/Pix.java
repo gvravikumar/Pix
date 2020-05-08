@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -13,6 +14,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewPropertyAnimator;
@@ -25,19 +28,6 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.core.graphics.drawable.DrawableCompat;
-import androidx.core.view.ViewCompat;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.fxn.adapters.InstantImageAdapter;
 import com.fxn.adapters.MainImageAdapter;
@@ -72,6 +62,18 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.view.ViewCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 public class Pix extends AppCompatActivity implements View.OnTouchListener {
 
@@ -856,8 +858,11 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
     private void setBottomSheetBehavior() {
         View bottomSheet = findViewById(R.id.bottom_sheet);
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-        mBottomSheetBehavior.setPeekHeight((int) (Utility.convertDpToPixel(194, this)));
-        mBottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+        ScreenUtils screenUtils=new ScreenUtils(this);
+        mBottomSheetBehavior.setPeekHeight(screenUtils.getHeight());
+     //  mBottomSheetBehavior.setPeekHeight((int) (Utility.convertDpToPixel(194, this)));
+        ((WABottomSheetBehaviour) mBottomSheetBehavior).setLocked(true);
+       /* mBottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
 
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
@@ -893,7 +898,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
                     camera.open();
                 }
             }
-        });
+        });*/
     }
 
     private float getScrollProportion(RecyclerView recyclerView) {
@@ -1076,5 +1081,53 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
     protected void onDestroy() {
         super.onDestroy();
         camera.destroy();
+    }
+
+
+    public class ScreenUtils {
+
+        Context ctx;
+        DisplayMetrics metrics;
+
+        public ScreenUtils(Context ctx) {
+            this.ctx = ctx;
+            WindowManager wm = (WindowManager) ctx
+                    .getSystemService(Context.WINDOW_SERVICE);
+
+            Display display = wm.getDefaultDisplay();
+            metrics = new DisplayMetrics();
+            display.getMetrics(metrics);
+
+        }
+
+        public int getHeight() {
+            return metrics.heightPixels;
+        }
+
+        public int getWidth() {
+            return metrics.widthPixels;
+        }
+
+        public int getRealHeight() {
+            return metrics.heightPixels / metrics.densityDpi;
+        }
+
+        public int getRealWidth() {
+            return metrics.widthPixels / metrics.densityDpi;
+        }
+
+        public int getDensity() {
+            return metrics.densityDpi;
+        }
+
+        public int getScale(int picWidth) {
+            Display display
+                    = ((WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE))
+                    .getDefaultDisplay();
+            int width = display.getWidth();
+            Double val = new Double(width) / new Double(picWidth);
+            val = val * 100d;
+            return val.intValue();
+        }
     }
 }
