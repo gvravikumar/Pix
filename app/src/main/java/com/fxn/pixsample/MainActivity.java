@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 
 import com.fxn.adapters.MyAdapter;
+import com.fxn.pix.BrowseGallery;
 import com.fxn.pix.Options;
 import com.fxn.pix.Pix;
 import com.fxn.utility.PermUtil;
@@ -32,7 +33,6 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
         myAdapter = new MyAdapter(this);
         options = Options.init()
-                .setStartWithOutCamera(true)
                 .setRequestCode(100)
                 .setCount(5)
                 .setFrontfacing(false)
@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(myAdapter);
         findViewById(R.id.fab).setOnClickListener((View view) -> {
             options.setPreSelectedUrls(returnValue);
-            Pix.start(MainActivity.this, options);
+            BrowseGallery.start(MainActivity.this, options);
         });
 
     }

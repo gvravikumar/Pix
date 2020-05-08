@@ -15,6 +15,10 @@
         <activity
             android:name="com.fxn.pix.Pix"
             android:noHistory="true"
-            android:screenOrientation="portrait"></activity>
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name="com.fxn.pix.BrowseGallery"
+            android:noHistory="true"
+            android:screenOrientation="portrait"/>
     </application>
 </manifest>

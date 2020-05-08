@@ -32,7 +32,6 @@ public class Options implements Serializable {
     public static final int SCREEN_ORIENTATION_FULL_USER = 13;
     public static final int SCREEN_ORIENTATION_LOCKED = 14;
     private ArrayList<String> preSelectedUrls = new ArrayList<>();
-    private boolean startWithOutCamera = false;
 
     @ScreenOrientation
     private int screenOrientation = SCREEN_ORIENTATION_UNSPECIFIED;
@@ -42,16 +41,6 @@ public class Options implements Serializable {
 
     public static Options init() {
         return new Options();
-    }
-
-    boolean isStartWithOutCamera() {
-        return startWithOutCamera;
-    }
-
-    public Options setStartWithOutCamera(boolean startWithOutCamera) {
-        check();
-        this.startWithOutCamera = startWithOutCamera;
-        return this;
     }
 
     public int getVideoDurationLimitinSeconds() {

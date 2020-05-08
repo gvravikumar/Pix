@@ -16,6 +16,7 @@
 
 package com.fxn.utility.ui;
 
+import com.fxn.pix.BrowseGallery;
 import com.fxn.pix.Pix;
 
 public interface FastScrollStateChangeListener {
@@ -24,9 +25,11 @@ public interface FastScrollStateChangeListener {
      * Called when fast scrolling begins
      */
     void onFastScrollStart(Pix fastScroller);
+    void onFastScrollStart(BrowseGallery fastScroller);
 
     /**
      * Called when fast scrolling ends
      */
     void onFastScrollStop(Pix fastScroller);
+    void onFastScrollStop(BrowseGallery fastScroller);
 }

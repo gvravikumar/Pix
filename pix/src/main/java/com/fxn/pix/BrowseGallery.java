@@ -2,22 +2,22 @@ package com.fxn.pix;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.animation.ObjectAnimator;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewPropertyAnimator;
 import android.view.WindowManager;
-import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.ScaleAnimation;
 import android.widget.FrameLayout;
@@ -26,8 +26,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.res.ResourcesCompat;
@@ -49,31 +47,14 @@ import com.fxn.utility.HeaderItemDecoration;
 import com.fxn.utility.ImageVideoFetcher;
 import com.fxn.utility.PermUtil;
 import com.fxn.utility.Utility;
-import com.fxn.utility.ui.FastScrollStateChangeListener;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import com.otaliastudios.cameraview.CameraListener;
-import com.otaliastudios.cameraview.CameraView;
-import com.otaliastudios.cameraview.FileCallback;
-import com.otaliastudios.cameraview.PictureResult;
-import com.otaliastudios.cameraview.VideoResult;
-import com.otaliastudios.cameraview.controls.Audio;
-import com.otaliastudios.cameraview.controls.Facing;
-import com.otaliastudios.cameraview.controls.Flash;
-import com.otaliastudios.cameraview.controls.Mode;
-import com.otaliastudios.cameraview.size.AspectRatio;
-import com.otaliastudios.cameraview.size.SizeSelector;
-import com.otaliastudios.cameraview.size.SizeSelectors;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
 
-public class Pix extends AppCompatActivity implements View.OnTouchListener {
+public class BrowseGallery extends AppCompatActivity implements View.OnTouchListener {
 
     private static final int sBubbleAnimDuration = 1000;
     private static final int sScrollbarHideDelay = 1000;
@@ -83,15 +64,12 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
     public static float TOPBAR_HEIGHT;
     private static int maxVideoDuration = 40000;
     private static ImageVideoFetcher imageVideoFetcher;
-    private CameraView camera;
     private int status_bar_height = 0;
     private int BottomBarHeight = 0;
     private int colorPrimaryDark;
     private float zoom = 0.0f;
     private float dist = 0.0f;
     private Handler handler = new Handler();
-    private Handler video_counter_handler = new Handler();
-    private Runnable video_counter_runnable = null;
     private FastScrollStateChangeListener mFastScrollStateChangeListener;
     private RecyclerView recyclerView, instantRecyclerView;
     private BottomSheetBehavior mBottomSheetBehavior;
@@ -137,7 +115,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
                             if (!Utility.isViewVisible(mScrollbar) && (recyclerView.computeVerticalScrollRange()
                                     - mViewHeight > 0)) {
 
-                                mScrollbarAnimator = Utility.showScrollbar(mScrollbar, Pix.this);
+                                mScrollbarAnimator = Utility.showScrollbar(mScrollbar, BrowseGallery.this);
                             }
                         }
                         break;
@@ -153,43 +131,6 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         }
     };
 
-    private FrameLayout flash;
-    private ImageView front;
-    private ImageView clickme;
-    private int flashDrawable;
-    private View.OnTouchListener onCameraTouchListner = new View.OnTouchListener() {
-
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            if (event.getPointerCount() > 1) {
-
-                switch (event.getAction() & MotionEvent.ACTION_MASK) {
-                    case MotionEvent.ACTION_POINTER_DOWN:
-                        dist = Utility.getFingerSpacing(event);
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        float maxZoom = 1f;
-
-                        float newDist = Utility.getFingerSpacing(event);
-                        if (newDist > dist) {
-                            //zoom in
-                            if (zoom < maxZoom) {
-                                zoom = zoom + 0.01f;
-                            }
-                        } else if ((newDist < dist) && (zoom > 0)) {
-                            //zoom out
-                            zoom = zoom - 0.01f;
-                        }
-                        dist = newDist;
-                        camera.setZoom(zoom);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            return false;
-        }
-    };
     private OnSelectionListener onSelectionListener = new OnSelectionListener() {
         @Override
         public void onClick(Img img, View view, int position) {
@@ -200,7 +141,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
                     mainImageAdapter.select(false, position);
                 } else {
                     if (options.getCount() <= selectionList.size()) {
-                        Toast.makeText(Pix.this,
+                        Toast.makeText(BrowseGallery.this,
                                 String.format(getResources().getString(R.string.selection_limiter_pix),
                                         selectionList.size()), Toast.LENGTH_SHORT).show();
                         return;
@@ -257,7 +198,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         @Override
         public void onLongClick(Img img, View view, int position) {
             if (options.getCount() > 1) {
-                Utility.vibe(Pix.this, 50);
+                Utility.vibe(BrowseGallery.this, 50);
                 LongSelection = true;
                 if ((selectionList.size() == 0) && (mBottomSheetBehavior.getState()
                         != BottomSheetBehavior.STATE_EXPANDED)) {
@@ -277,7 +218,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
                     mainImageAdapter.select(false, position);
                 } else {
                     if (options.getCount() <= selectionList.size()) {
-                        Toast.makeText(Pix.this,
+                        Toast.makeText(BrowseGallery.this,
                                 String.format(getResources().getString(R.string.selection_limiter_pix),
                                         selectionList.size()), Toast.LENGTH_SHORT).show();
                         return;
@@ -301,7 +242,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         PermUtil.checkForCamaraWritePermissions(context, new WorkFinish() {
             @Override
             public void onWorkFinish(Boolean check) {
-                Intent i = new Intent(context.getActivity(), Pix.class);
+                Intent i = new Intent(context.getActivity(), BrowseGallery.class);
                 i.putExtra(OPTIONS, options);
                 context.startActivityForResult(i, options.getRequestCode());
             }
@@ -316,7 +257,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         PermUtil.checkForCamaraWritePermissions(context, new WorkFinish() {
             @Override
             public void onWorkFinish(Boolean check) {
-                Intent i = new Intent(context, Pix.class);
+                Intent i = new Intent(context, BrowseGallery.class);
                 i.putExtra(OPTIONS, options);
                 context.startActivityForResult(i, options.getRequestCode());
             }
@@ -352,7 +293,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         ArrayList<String> list = new ArrayList<>();
         for (Img i : selectionList) {
             list.add(i.getUrl());
-            // Log.e("Pix images", "img " + i.getUrl());
+            // Log.e("BrowseGallery images", "img " + i.getUrl());
         }
         Intent resultIntent = new Intent();
         resultIntent.putStringArrayListExtra(IMAGE_RESULTS, list);
@@ -367,26 +308,6 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         Utility.hideStatusBar(this);
         setContentView(R.layout.activity_main_lib);
         initialize();
-    }
-
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        camera.open();
-        camera.setMode(Mode.PICTURE);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        camera.open();
-        camera.setMode(Mode.PICTURE);
-    }
-
-    @Override
-    protected void onPause() {
-        camera.close();
-        super.onPause();
     }
 
     private void initialize() {
@@ -407,118 +328,11 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         maxVideoDuration = options.getVideoDurationLimitinSeconds() * 1000; //conversion in  milli seconds
 
         ((TextView) findViewById(R.id.message_bottom)).setText(options.isExcludeVideos() ? R.string.pix_bottom_message_without_video : R.string.pix_bottom_message_with_video);
-        status_bar_height = Utility.getStatusBarSizePort(Pix.this);
+        status_bar_height = Utility.getStatusBarSizePort(BrowseGallery.this);
         setRequestedOrientation(options.getScreenOrientation());
         colorPrimaryDark =
                 ResourcesCompat.getColor(getResources(), R.color.colorPrimaryPix, getTheme());
-        camera = findViewById(R.id.camera_view);
-        camera.setMode(Mode.PICTURE);
-        if (options.isExcludeVideos()) {
-            camera.setAudio(Audio.OFF);
-        }
-        SizeSelector width = SizeSelectors.minWidth(Utility.WIDTH);
-        SizeSelector height = SizeSelectors.minHeight(Utility.HEIGHT);
-        SizeSelector dimensions = SizeSelectors.and(width, height); // Matches sizes bigger than width X height
-        SizeSelector ratio = SizeSelectors.aspectRatio(AspectRatio.of(1, 2), 0); // Matches 1:2 sizes.
-        SizeSelector ratio3 = SizeSelectors.aspectRatio(AspectRatio.of(2, 3), 0); // Matches 2:3 sizes.
-        SizeSelector ratio2 = SizeSelectors.aspectRatio(AspectRatio.of(9, 16), 0); // Matches 9:16 sizes.
-        SizeSelector result = SizeSelectors.or(
-                SizeSelectors.and(ratio, dimensions),
-                SizeSelectors.and(ratio2, dimensions),
-                SizeSelectors.and(ratio3, dimensions)
-        );
-        camera.setPictureSize(result);
-        camera.setVideoSize(result);
-        camera.setLifecycleOwner(Pix.this);
-
-        if (options.isFrontfacing()) {
-            camera.setFacing(Facing.FRONT);
-        } else {
-            camera.setFacing(Facing.BACK);
-        }
-
-        camera.addCameraListener(new CameraListener() {
-            @Override
-            public void onPictureTaken(PictureResult result) {
-                File dir = new File(Environment.getExternalStorageDirectory(), options.getPath());
-                if (!dir.exists()) {
-                    dir.mkdirs();
-                }
-                File photo = new File(dir, "IMG_"
-                        + new SimpleDateFormat("yyyyMMdd_HHmmSS", Locale.ENGLISH).format(new Date())
-                        + ".jpg");
-
-                result.toFile(photo, new FileCallback() {
-                    @Override
-                    public void onFileReady(@Nullable File photo) {
-                        Utility.vibe(Pix.this, 50);
-                        Img img = new Img("", "", photo.getAbsolutePath(), "", 1);
-                        selectionList.add(img);
-                        Utility.scanPhoto(Pix.this, photo);
-                        returnObjects();
-                    }
-                });
-            }
-
-            @Override
-            public void onVideoTaken(VideoResult result) {
-                // A Video was taken!
-                Utility.vibe(Pix.this, 50);
-                Img img = new Img("", "", result.getFile().getAbsolutePath(), "", 3);
-                selectionList.add(img);
-                Utility.scanPhoto(Pix.this, result.getFile());
-                camera.setMode(Mode.PICTURE);
-                returnObjects();
-            }
-
-            @Override
-            public void onVideoRecordingStart() {
-                findViewById(R.id.video_counter_layout).setVisibility(View.VISIBLE);
-                video_counter_progress = 0;
-                video_counter_progressbar.setProgress(0);
-                video_counter_runnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        ++video_counter_progress;
-                        video_counter_progressbar.setProgress(video_counter_progress);
-                        TextView textView = findViewById(R.id.video_counter);
-                        String counter = "";
-                        int min = 0;
-                        String sec = "" + video_counter_progress;
-                        if (video_counter_progress > 59) {
-                            min = video_counter_progress / 60;
-                            sec = "" + (video_counter_progress - (60 * min));
-                        }
-                        if (sec.length() == 1) {
-                            sec = "0" + sec;
-                        }
-                        counter = min + ":" + sec;
-                        textView.setText(counter);
-                        video_counter_handler.postDelayed(this, 1000);
-                    }
-                };
-                video_counter_handler.postDelayed(video_counter_runnable, 1000);
-                clickme.animate().scaleX(1.2f).scaleY(1.2f).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                flash.animate().alpha(0).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                findViewById(R.id.message_bottom).animate().alpha(0).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                front.animate().alpha(0).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-            }
-
-            @Override
-            public void onVideoRecordingEnd() {
-                findViewById(R.id.video_counter_layout).setVisibility(View.GONE);
-                video_counter_handler.removeCallbacks(video_counter_runnable);
-                clickme.animate().scaleX(1f).scaleY(1f).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                findViewById(R.id.message_bottom).animate().scaleX(1f).scaleY(1f).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                flash.animate().alpha(1).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                front.animate().alpha(1).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-            }
-            // And much more
-        });
         zoom = 0.0f;
-        flash = findViewById(R.id.flash);
-        clickme = findViewById(R.id.clickme);
-        front = findViewById(R.id.front);
         topbar = findViewById(R.id.topbar);
         video_counter_progressbar = findViewById(R.id.video_pbr);
         selection_count = findViewById(R.id.selection_count);
@@ -533,7 +347,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         mScrollbar.setVisibility(View.GONE);
         mBubbleView.setVisibility(View.GONE);
         bottomButtons = findViewById(R.id.bottomButtons);
-        TOPBAR_HEIGHT = Utility.convertDpToPixel(56, Pix.this);
+        TOPBAR_HEIGHT = Utility.convertDpToPixel(56, BrowseGallery.this);
         status_bar_bg = findViewById(R.id.status_bar_bg);
         status_bar_bg.getLayoutParams().height = status_bar_height;
         status_bar_bg.setTranslationY(-1 * status_bar_height);
@@ -578,8 +392,6 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
 
         onClickMethods();
 
-        flashDrawable = R.drawable.ic_flash_off_black_24dp;
-
         if ((options.getPreSelectedUrls().size()) > options.getCount()) {
             int large = options.getPreSelectedUrls().size() - 1;
             int small = options.getCount();
@@ -589,66 +401,25 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         }
         DrawableCompat.setTint(selection_back.getDrawable(), colorPrimaryDark);
         updateImages();
+        mBottomSheetBehavior.setSaveFlags(BottomSheetBehavior.SAVE_HIDEABLE);
+        mBottomSheetBehavior.setHideable(false);
+        mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        Utility.manipulateVisibility(BrowseGallery.this, 1, findViewById(R.id.arrow_up),
+                instantRecyclerView, recyclerView, status_bar_bg,
+                topbar, bottomButtons, sendButton, LongSelection);
+        Utility.showScrollbar(mScrollbar, BrowseGallery.this);
+        mainImageAdapter.notifyDataSetChanged();
+        mViewHeight = mScrollbar.getMeasuredHeight();
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                setViewPositions(getScrollProportion(recyclerView));
+            }
+        });
+        sendButton.setVisibility(View.GONE);
     }
 
     private void onClickMethods() {
-        clickme.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_UP) {
-                    findViewById(R.id.clickmebg).setVisibility(View.GONE);
-                    findViewById(R.id.clickmebg).animate().scaleX(1f).scaleY(1f).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                    clickme.animate().scaleX(1f).scaleY(1f).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    findViewById(R.id.clickmebg).setVisibility(View.VISIBLE);
-                    findViewById(R.id.clickmebg).animate().scaleX(1.2f).scaleY(1.2f).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                    clickme.animate().scaleX(1.2f).scaleY(1.2f).setDuration(300).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                }
-                if (event.getAction() == MotionEvent.ACTION_UP && camera.isTakingVideo()) {
-                    camera.stopVideo();
-                }
-
-                return false;
-            }
-        });
-        clickme.setOnLongClickListener(new View.OnLongClickListener() {
-
-            @Override
-            public boolean onLongClick(View v) {
-                if (options.isExcludeVideos()) {
-                    return false;
-                }
-                camera.setMode(Mode.VIDEO);
-                File dir = new File(Environment.getExternalStorageDirectory(), options.getPath());
-                if (!dir.exists()) {
-                    dir.mkdirs();
-                }
-                File video = new File(dir, "VID_"
-                        + new SimpleDateFormat("yyyyMMdd_HHmmSS", Locale.ENGLISH).format(new Date())
-                        + ".mp4");
-                video_counter_progressbar.setMax(maxVideoDuration / 1000);
-                video_counter_progressbar.invalidate();
-                camera.takeVideo(video, maxVideoDuration);
-                return true;
-            }
-        });
-        clickme.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (selectionList.size() >= options.getCount()) {
-                    Toast.makeText(Pix.this,
-                            String.format(getResources().getString(R.string.cannot_click_image_pix),
-                                    "" + options.getCount()), Toast.LENGTH_LONG).show();
-                    return;
-                }
-                final ObjectAnimator oj = ObjectAnimator.ofFloat(camera, "alpha", 1f, 0f, 0f, 1f);
-                oj.setStartDelay(200l);
-                oj.setDuration(600l);
-                oj.start();
-                camera.takePicture();
-                return;
-            }
-        });
         findViewById(R.id.selection_ok).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -678,67 +449,11 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
                 selection_check.setVisibility(View.GONE);
             }
         });
-        final ImageView iv = (ImageView) flash.getChildAt(0);
-        flash.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                final int height = flash.getHeight();
-                iv.animate()
-                        .translationY(height)
-                        .setDuration(100)
-                        .setListener(new AnimatorListenerAdapter() {
-                            @Override
-                            public void onAnimationEnd(Animator animation) {
-                                super.onAnimationEnd(animation);
-                                iv.setTranslationY(-(height / 2));
-                                if (flashDrawable == R.drawable.ic_flash_auto_black_24dp) {
-                                    flashDrawable = R.drawable.ic_flash_off_black_24dp;
-                                    iv.setImageResource(flashDrawable);
-                                    camera.setFlash(Flash.OFF);
-                                } else if (flashDrawable == R.drawable.ic_flash_off_black_24dp) {
-                                    flashDrawable = R.drawable.ic_flash_on_black_24dp;
-                                    iv.setImageResource(flashDrawable);
-                                    camera.setFlash(Flash.ON);
-                                } else {
-                                    flashDrawable = R.drawable.ic_flash_auto_black_24dp;
-                                    iv.setImageResource(flashDrawable);
-                                    camera.setFlash(Flash.AUTO);
-                                }
-                                iv.animate().translationY(0).setDuration(50).setListener(null).start();
-                            }
-                        })
-                        .start();
-            }
-        });
-
-        front.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                final ObjectAnimator oa1 = ObjectAnimator.ofFloat(front, "scaleX", 1f, 0f).setDuration(150);
-                final ObjectAnimator oa2 = ObjectAnimator.ofFloat(front, "scaleX", 0f, 1f).setDuration(150);
-                oa1.addListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        super.onAnimationEnd(animation);
-                        front.setImageResource(R.drawable.ic_photo_camera);
-                        oa2.start();
-                    }
-                });
-                oa1.start();
-                if (options.isFrontfacing()) {
-                    options.setFrontfacing(false);
-                    camera.setFacing(Facing.BACK);
-                } else {
-                    camera.setFacing(Facing.FRONT);
-                    options.setFrontfacing(true);
-                }
-            }
-        });
     }
 
     private void updateImages() {
         mainImageAdapter.clearList();
-        Cursor cursor = Utility.getImageVideoCursor(Pix.this, options.isExcludeVideos());
+        Cursor cursor = Utility.getImageVideoCursor(BrowseGallery.this, options.isExcludeVideos());
         if (cursor == null) {
             return;
         }
@@ -763,7 +478,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
             int finDate = imageDate; // mediaType == 1 ? imageDate : videoDate;
             calendar.setTimeInMillis(cursor.getLong(finDate) * 1000);
             //Log.e("time",i+"->"+new SimpleDateFormat("hh:mm:ss dd/MM/yyyy",Locale.ENGLISH).format(calendar.getTime()));
-            String dateDifference = Utility.getDateDifference(Pix.this, calendar);
+            String dateDifference = Utility.getDateDifference(BrowseGallery.this, calendar);
             if (!header.equalsIgnoreCase("" + dateDifference)) {
                 header = "" + dateDifference;
                 pos += 1;
@@ -799,7 +514,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         }
         mainImageAdapter.addImageList(INSTANTLIST);
         initaliseadapter.addImageList(INSTANTLIST);
-        imageVideoFetcher = new ImageVideoFetcher(Pix.this) {
+        imageVideoFetcher = new ImageVideoFetcher(BrowseGallery.this) {
             @Override
             protected void onPostExecute(ModelList modelList) {
                 super.onPostExecute(modelList);
@@ -830,7 +545,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
         imageVideoFetcher.setStartingCount(pos);
         imageVideoFetcher.header = header;
         imageVideoFetcher.setPreSelectedUrls(options.getPreSelectedUrls());
-        imageVideoFetcher.execute(Utility.getImageVideoCursor(Pix.this, options.isExcludeVideos()));
+        imageVideoFetcher.execute(Utility.getImageVideoCursor(BrowseGallery.this, options.isExcludeVideos()));
         cursor.close();
         setBottomSheetBehavior();
     }
@@ -838,39 +553,8 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
     private void setBottomSheetBehavior() {
         View bottomSheet = findViewById(R.id.bottom_sheet);
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-        mBottomSheetBehavior.setPeekHeight((int) (Utility.convertDpToPixel(194, this)));
-        mBottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
-
-            @Override
-            public void onStateChanged(@NonNull View bottomSheet, int newState) {
-
-            }
-
-            @Override
-            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                Utility.manipulateVisibility(Pix.this, slideOffset, findViewById(R.id.arrow_up),
-                        instantRecyclerView, recyclerView, status_bar_bg,
-                        topbar, bottomButtons, sendButton, LongSelection);
-                if (slideOffset == 1) {
-                    Utility.showScrollbar(mScrollbar, Pix.this);
-                    mainImageAdapter.notifyDataSetChanged();
-                    mViewHeight = mScrollbar.getMeasuredHeight();
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            setViewPositions(getScrollProportion(recyclerView));
-                        }
-                    });
-                    sendButton.setVisibility(View.GONE);
-                    //  fotoapparat.stop();
-                } else if (slideOffset == 0) {
-                    initaliseadapter.notifyDataSetChanged();
-                    hideScrollbar();
-                    img_count.setText(String.valueOf(selectionList.size()));
-                    camera.open();
-                }
-            }
-        });
+        ScreenUtils screenUtils = new ScreenUtils(this);
+        mBottomSheetBehavior.setPeekHeight(screenUtils.getHeight());
     }
 
     private float getScrollProportion(RecyclerView recyclerView) {
@@ -968,7 +652,7 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
 
                 if (!Utility.isViewVisible(mScrollbar) && (recyclerView.computeVerticalScrollRange()
                         - mViewHeight > 0)) {
-                    mScrollbarAnimator = Utility.showScrollbar(mScrollbar, Pix.this);
+                    mScrollbarAnimator = Utility.showScrollbar(mScrollbar, BrowseGallery.this);
                 }
 
                 if (mainImageAdapter != null) {
@@ -996,6 +680,19 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
                 return true;
         }
         return super.onTouchEvent(event);
+    }
+
+    public interface FastScrollStateChangeListener {
+
+        /**
+         * Called when fast scrolling begins
+         */
+        void onFastScrollStart(BrowseGallery fastScroller);
+
+        /**
+         * Called when fast scrolling ends
+         */
+        void onFastScrollStop(BrowseGallery fastScroller);
     }
 
     @Override
@@ -1041,16 +738,55 @@ public class Pix extends AppCompatActivity implements View.OnTouchListener {
             });
             sendButton.startAnimation(anim);
             selectionList.clear();
-        } else if (mBottomSheetBehavior.getState() == BottomSheetBehavior.STATE_EXPANDED) {
-            mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
         } else {
             super.onBackPressed();
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        camera.destroy();
+    public class ScreenUtils {
+
+        Context ctx;
+        DisplayMetrics metrics;
+
+        public ScreenUtils(Context ctx) {
+            this.ctx = ctx;
+            WindowManager wm = (WindowManager) ctx
+                    .getSystemService(Context.WINDOW_SERVICE);
+
+            Display display = wm.getDefaultDisplay();
+            metrics = new DisplayMetrics();
+            display.getMetrics(metrics);
+
+        }
+
+        public int getHeight() {
+            return metrics.heightPixels;
+        }
+
+        public int getWidth() {
+            return metrics.widthPixels;
+        }
+
+        public int getRealHeight() {
+            return metrics.heightPixels / metrics.densityDpi;
+        }
+
+        public int getRealWidth() {
+            return metrics.widthPixels / metrics.densityDpi;
+        }
+
+        public int getDensity() {
+            return metrics.densityDpi;
+        }
+
+        public int getScale(int picWidth) {
+            Display display
+                    = ((WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE))
+                    .getDefaultDisplay();
+            int width = display.getWidth();
+            Double val = new Double(width) / new Double(picWidth);
+            val = val * 100d;
+            return val.intValue();
+        }
     }
 }
